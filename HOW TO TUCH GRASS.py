@@ -4,23 +4,15 @@ import os      # For file handling
 import sys
 import time    # For delays
 import urllib.request  # For downloading content updates
-from colorama import Fore, Style, Back, init  # For styling text
-init(autoreset = True)  # Automatically reset colorama styles after each print
+from colorama import Fore, Back, init  # For styling text
 
+init(autoreset = True)  # Automatically reset colorama styles after each print
 os.chdir(os.path.dirname(sys.executable))  # Change working directory to the location of the executable (for bundled versions)
 
-local_game_version = "1.2"  # Current version of the game
+local_game_version = "1.3"  # Current version of the game
 
 ITALIC_VAR = "\033[3m"
 RESET_VAR = "\033[0m"
-
-def clearTerminal():
-	os.system('cls' if os.name == 'nt' else 'clear')
-
-def iinput(text):
-    return input(Fore.LIGHTRED_EX + ITALIC_VAR + text + RESET_VAR)
-
-clearTerminal()	
 
 # ====== REMOTE URLs ======
 GAME_VERSION_URL = "https://raw.githubusercontent.com/MBU712/HOW-TO-TUCH-GRASS-Python-Text-Game/refs/heads/main/game_version.txt"
@@ -53,7 +45,6 @@ def get_latest_game_version():
 
 # ====== DOWNLOAD CONTENT.BIN ======
 def download_content():
-    print("\nDownloading content...")
     try:
         urllib.request.urlretrieve(CONTENT_URL, "content.bin")
         print("Download complete.")
@@ -70,69 +61,8 @@ def load_content():
         time.sleep(1.2)
         sys.exit(0)
 
-# ====== STARTUP LOGIC ======
-print("\n\nChecking for content updates...\n")
-
-latest_version = get_latest_version()
-latest_game_version = get_latest_game_version()
-if 'Beta' in local_game_version and (local_game_version[0] + local_game_version[1] + local_game_version[2]) == latest_game_version:
-    latest_game_version_beta = latest_game_version
-    
-
-if not os.path.exists("content.bin"):
-    print("\nNo local content found. Downloading...")
-    download_content()
-    content = load_content()
-    local_version = content.get("version", "0")
-else:
-    content = load_content()
-    local_version = content.get("version", "0")
-
-if latest_version == "0":
-    print("Can't fetch latest content.")
-elif local_version != latest_version:
-    print(f"New content version available! Local: {Fore.GREEN}{local_version}{Fore.RESET}, Latest: {Fore.GREEN}{latest_version}")
-    download_content()
-    print(f"Dowloading content version {Fore.GREEN}{latest_version}.")
-    content = load_content()
-else:
-    print(f"\nContent is up to date.{Fore.GREEN} Version: {local_version}\n")
-
-if latest_game_version == "0":
-	print("Can't fetch latest version.")
-elif 'Beta' in local_game_version:
-    print(f"Game is in beta mode. Version: {Fore.GREEN}{local_game_version}{Fore.RESET}")
-    try: 
-        if latest_game_version == latest_game_version_beta:
-            print(f"New stable version of current Beta version available! Local: {Fore.GREEN}{local_game_version}{Fore.RESET}, Latest: {Fore.GREEN}{latest_game_version}")
-            print(f"Go to {Fore.YELLOW}'https://github.com/MBU712/HOW-TO-TUCH-GRASS-Python-Text-Game/releases' and download the latest game release.")
-    except Exception as e:
-        print(f"{Fore.CYAN}No matching stable version found.")
-elif local_game_version != latest_game_version:
-    print(f"New game version available! Local: {Fore.GREEN}{local_game_version}{Fore.RESET}, Latest: {Fore.GREEN}{latest_game_version}")
-    print(f"Go to {Fore.YELLOW}'https://github.com/MBU712/HOW-TO-TUCH-GRASS-Python-Text-Game/releases' and download the latest game release.")
-    time.sleep(1.2)
-    sys.exit(0)
-else:
-    print(f"Game is up to date. Version: {local_game_version}")
-
-time.sleep(2)
-clearTerminal()
-
-# ====== UNPACK CONTENT ======
-GAMES = content["games"]
-EASTER_EGGS = content["eggs"]
-THEMES = content["themes"]
-
-# Create saves folder if missing
-if not os.path.exists("saves"):
-    os.makedirs("saves")
-
 # List of save names (without .dat)
 SAVES = [f[:-4] for f in os.listdir("saves") if f.endswith(".dat")]
-
-def RS():
-    return "\n".join(SAVES)
 
 def load_slot(slot_name):
     #Load progress from a save file.
@@ -146,50 +76,6 @@ def save_slot(slot_name, progress):
     #Save progress to a file.
     with open(os.path.join("saves", f"{slot_name}.dat"), "wb") as f:
         pickle.dump(progress, f)
-
-print (Fore.WHITE + f'\n\nSelect a save slot from the following:\n\n{Fore.LIGHTRED_EX}{RS()}{Fore.RESET}\n\nOr type "new" to start a new save, or type "q" to exit the game.')
-slot = iinput('\nType here: ').replace(' ', '').lower()
-# New Slot
-if slot == "new":
-    slot = iinput("Enter a name for your new save: ").replace(' ', '_').lower()
-    SAVES.append(slot)
-    progress = {"games_found": [], "eggs_found": [], "coins": 0, "unlocked_themes":['Default']}
-# Load a previous slot
-elif slot in SAVES:
-    progress = load_slot(slot)
-# Quit the game
-elif slot == "q":
-    print("\nGoodbye!!! Go TUCH some grass!\n")
-    time.sleep(1.2)
-    sys.exit(0)
-# Invalid input
-else:
-    print("\nInvalid save name. Please choose again.\n")
-    print(RS())
-    slot = iinput("Enter a valid save name or type 'new': ").replace(' ', '').lower()
-
-    if slot == "new":
-        slot = iinput(Fore.LIGHTRED_EX + "Enter a name for your new save: " + Fore.RESET).replace(' ', '_').lower()
-        SAVES.append(slot)
-        progress = {"games_found": [], "eggs_found": [], "coins": 0, "unlocked_themes":['Default']}
-    else:
-        progress = load_slot(slot)
-
-# Required keys and their default values
-REQUIRED_KEYS = {
-    "games_found": [],
-    "eggs_found": [],
-    "coins": 0,
-    "unlocked_themes": ["Default"]
-}
-
-# Auto-fix missing keys
-for key, default_value in REQUIRED_KEYS.items():
-    if key not in progress:
-        progress[key] = default_value
-
-if "Default" not in progress["unlocked_themes"]:
-    progress["unlocked_themes"].append("Default")
 
 def get_completion(progress):
     total_found = len(progress["games_found"]) + len(progress["eggs_found"])
@@ -216,21 +102,135 @@ def get_rank(progress):
         return "🌵 Grass Noob 🌵"
     else:
         return "GET OUT OF MY LAWN YOU DON'T EVEN HAVE ANY GRASSTOUCHING EXPERIENCE"
-    
-# A list of secret commands
-SECRET_COMMANDS = {
-    "grassgod": "Unlocks all games and easter eggs",
-    "seed": "Gives a random hint",
-    "secret": "Shows this secret menu",
-    'len': "Shows the total number of games and easter eggs in the list",
-    'len_easter': "Shows the total number of easter eggs in the list",
-    'h': "Shows the list of games",
-    'eh': "Shows the list of easter eggs"
-}
+
+def clearTerminal():
+	os.system('cls' if os.name == 'nt' else 'clear')
+
+def iinput(text):
+    return input(Fore.LIGHTRED_EX + Back.BLACK + ITALIC_VAR + text + RESET_VAR)
 
 def tprint(text):
-    print(sel_theme + text + Style.RESET_ALL)
+    print(sel_theme + sel_bg + text)
 
+def itprint(text):
+    print(Fore.LIGHTRED_EX + Back.BLACK + ITALIC_VAR + text + RESET_VAR)
+
+def oprint(text):
+    print(ITALIC_VAR + Fore.LIGHTBLUE_EX + Back.BLUE + text + RESET_VAR)
+
+# ====== CREATE SAVES FOLDER IF NONEXISTENT ======
+if not os.path.exists("saves"):
+    os.makedirs("saves")
+
+
+# ====== STARTUP LOGIC ======
+clearTerminal()
+print("\n\nChecking for content updates...\n")
+	
+# ====== UPDATE CHECKER ======
+latest_version = get_latest_version()
+latest_game_version = get_latest_game_version()
+if 'Beta' in local_game_version and (local_game_version[0] + local_game_version[1] + local_game_version[2]) == latest_game_version:
+    latest_game_version_beta = latest_game_version
+    
+if not os.path.exists("content.bin"):
+    print("\nNo local content found. Downloading...")
+    download_content()
+    content = load_content()
+    local_version = content.get("version", "0")
+else:
+    content = load_content()
+    local_version = content.get("version", "0")
+
+if latest_version == "0":
+    print("Can't fetch latest content.")
+elif local_version != latest_version:
+    print(f"New content version available! Local: {Fore.GREEN}{local_version}{Fore.RESET}, Latest: {Fore.GREEN}{latest_version}")
+    print(f"Dowloading content version {Fore.GREEN}{latest_version}.")
+    download_content()
+    content = load_content()
+else:
+    print(f"\nContent is up to date.{Fore.GREEN} Version: {local_version}\n")
+
+if latest_game_version == "0":
+	print("Can't fetch latest version.")
+elif 'Beta' in local_game_version:
+    print(f"Game is in beta mode. Version: {Fore.GREEN}{local_game_version}{Fore.RESET}")
+    try: 
+        if latest_game_version == latest_game_version_beta:
+            print(f"New stable version of current Beta version available! Local: {Fore.GREEN}{local_game_version}{Fore.RESET}, Latest: {Fore.GREEN}{latest_game_version}")
+            print(f"Go to {Fore.YELLOW}'https://github.com/MBU712/HOW-TO-TUCH-GRASS-Python-Text-Game/releases'{Fore.RESET} and download the latest game release.")
+        elif latest_game_version > latest_game_version_beta:
+            print(f"New stable version available! Local: {Fore.GREEN}{local_game_version}{Fore.RESET}, Latest: {Fore.GREEN}{latest_game_version}")
+            print(f"Go to {Fore.YELLOW}'https://github.com/MBU712/HOW-TO-TUCH-GRASS-Python-Text-Game/releases'{Fore.RESET} and download the latest game release.")
+    except Exception as e:
+        print(f"{Fore.CYAN}No matching or newer stable version found.")
+elif local_game_version != latest_game_version and local_game_version < latest_game_version:
+    print(f"New game version available! Local: {Fore.GREEN}{local_game_version}{Fore.RESET}, Latest: {Fore.GREEN}{latest_game_version}")
+    print(f"Go to {Fore.YELLOW}'https://github.com/MBU712/HOW-TO-TUCH-GRASS-Python-Text-Game/releases'{Fore.RESET} and download the latest game release.")
+    time.sleep(2)
+    sys.exit(0)
+else:
+    print(f"Game is up to date. Version: {Fore.GREEN}{local_game_version}")
+
+time.sleep(2)
+clearTerminal()
+
+# ====== UNPACK CONTENT ======
+GAMES = content["games"]
+EASTER_EGGS = content["eggs"]
+THEMES = content["themes"]
+BACKGROUNDS = content["backgrounds"]
+
+# ====== SAVE SLOT SELECTION ======
+while True:
+    print (Fore.WHITE + f'\nSelect a save slot from the following:\n')
+    for n in SAVES:
+            oprint(f"- {n}")
+    print(Fore.WHITE + f'\nOr type "new" to start a new save, or type "q" to exit the game.')
+    slot = iinput('\nType here: ').replace(' ', '').lower()
+    # New Slot
+    if slot == "new":
+        slot = iinput("Enter a name for your new save: ").replace(' ', '_').lower()
+        SAVES.append(slot)
+        progress = {"games_found": [], "eggs_found": [], "coins": 0, "unlocked_themes":['Default']}
+        break
+    # Load a previous slot
+    elif slot in SAVES:
+        progress = load_slot(slot)
+        break
+    # Quit the game
+    elif slot == "q":
+        print("\nGoodbye!!! Go TUCH some grass!\n")
+        time.sleep(1.2)
+        sys.exit(0)
+    # Invalid input
+    else:
+        clearTerminal()
+        itprint("\nInvalid save name. Please try again.")
+        time.sleep(0.9)
+        clearTerminal()
+
+
+# ====== REQUIRED KEYS CHECK ======
+REQUIRED_KEYS = {
+    "games_found": [],
+    "eggs_found": [],
+    "coins": 0,
+    "unlocked_themes": ["Default"],
+    "unlocked_backgrounds": ["Default"]
+}
+
+# ====== KEY AUTO-FIX =====
+for key, default_value in REQUIRED_KEYS.items():
+    if key not in progress:
+        progress[key] = default_value
+
+if "Default" not in progress["unlocked_themes"]:
+    progress["unlocked_themes"].append("Default")
+
+if "Default" not in progress["unlocked_backgrounds"]:
+    progress["unlocked_backgrounds"].append("Default")
 
 THEMEs = list()
 for value in progress['unlocked_themes']:
@@ -242,23 +242,33 @@ for value in THEMES.keys():
 for value in progress['unlocked_themes']:
     themeS.remove(value)
 
+BACKGROUNDs = list()
+for value in progress['unlocked_backgrounds']:
+    BACKGROUNDs.append(value)
+
+backgroundS = list()
+for value in BACKGROUNDS:
+    backgroundS.append(value)
+for value in progress['unlocked_backgrounds']:
+    backgroundS.remove(value)
+
 length = 0
 GAME = list(GAMES.keys())
 EGG = list(EASTER_EGGS.keys())
 
+# ====== THEME SELECTION ======
+clearTerminal()
 print("\n\nEnter the theme you would like to use for this game from the following:\n")
 for t in THEMEs:
-    print(Fore.LIGHTRED_EX + "- " + t)
-print('\n')
-THEME=iinput("Enter your selected Theme here: ").title()
+    oprint(f"-{t} ")
+THEME=iinput("\nEnter your selected Theme here: ").title()
 
-if THEME in THEMES.keys() and THEME in progress["unlocked_themes"]:
-    if THEME == "Default":
-        print("Theme set to Default.")
-        sel_theme = ""
-    elif THEME != "Default" and THEME in progress["unlocked_themes"]:
-        print(f"Theme set to {THEME}.")
-        sel_theme = THEMES[THEME]
+if THEME == "Default":
+    print("Theme set to Default.")
+    sel_theme = ""
+elif THEME != "Default" and THEME in progress["unlocked_themes"]:
+    print(f"Theme set to {THEME}.")
+    sel_theme = THEMES[THEME]
 else:
     print('Theme not recognized. Setting theme to default.')
     sel_theme = ""
@@ -266,20 +276,42 @@ else:
 time.sleep(1)
 clearTerminal()
 
-print(sel_theme + ITALIC_VAR + '\n\nHow To TUCH Grass!! \nBased On Your Favorite Games!!!' + RESET_VAR)
+# ====== BACKGROUND SELECTION ======
+clearTerminal()
+print("\n\nEnter the text background you would like to use for this game from the following:\n")
+for t in BACKGROUNDS:
+    oprint(f"-{t} ")
+BACKGROUND=iinput("\nEnter your selected Background here: ").title()
+
+if BACKGROUND == "Default":
+    print("Background set to Default.")
+    sel_bg = ""
+elif BACKGROUND in BACKGROUNDS:
+    sel_bg = BACKGROUND
+    print(f"Background set to {BACKGROUND}.")
+else:
+    print('Background not recognized. Setting background to default.')
+    sel_bg = ""
+
+time.sleep(1)
+clearTerminal()
+
+# ====== START MENU ======
+print(ITALIC_VAR + Fore.WHITE + '\nHow To TUCH Grass!! \nBased On Your Favorite Games!!!' + RESET_VAR)
 iinput('\nPress enter to continue....')
 
+# ====== MAIN GAME STRUCTURE ======
 while True:
     clearTerminal()
-    tprint('\nType Your Favorite Video Game or Board Game Here,\nOr type "r" For A Random Game,\nOr "q" To Quit The Game,\nOr "s" to save your progress,\nor "delete" to delete a save slot,\nor "p" to view your progress,\nOr "shop" to visit the grass shop,\nOr "themes" to change themes!!!')
+    tprint('\nType Your Favorite Video Game or Board Game Here,\nOr "q" To Quit The Game,\nOr "s" to save your progress,\nor "delete" to delete a save slot,\nor "p" to view your progress,\nOr "shop" to visit the grass shop,\nOr "themes" to change themes!!!')
     game: str = iinput('\n\nType here: ').replace(' ', '').lower()
     
-    # Quit game and save progress option
+    # === QUIT GAME ===
     if game == 'q':
         clearTerminal()
-        tprint("\nWhich save slot do you want to save to?")
+        tprint("\nWhich save slot do you want to save to?\n")
         for n in SAVES:
-            tprint(ITALIC_VAR + f"- {n}" + RESET_VAR)
+            oprint(f"- {n}")
 
         save_to = iinput("\nEnter the save name (or type 'none' to skip): ").replace(' ', '').lower()
 
@@ -296,7 +328,7 @@ while True:
         time.sleep(1.2)
         sys.exit(0)
 
-
+    # === CHANGE THEME ===
     elif game == 'themes':
         clearTerminal()
         print("\n\nEnter the theme you would like to use for this game from the following:\n")
@@ -316,19 +348,27 @@ while True:
                 print('Theme not recognized. Setting theme to default.')
 
 
-    # Random game (only from GAMES, not easter eggs)
-    elif game == 'r':
+# === CHANGE BACKGROUND ===
+    elif game == 'backgrounds':
         clearTerminal()
-        name, steps = random.choice(list(GAMES.items()))
-        tprint("Note: This won't count towards your progress.")
-        tprint(f'\n == {name.upper()} ==\n')
-        tprint(steps[0])
-        tprint('\nCongratulations!! If you followed the steps, you have OFFICIALLY TUCHED GRASS!!!!!')
-        iinput('\nPress enter to continue....')
-        continue
+        print("\n\nEnter the background you would like to use for this game from the following:\n")
+        for t in BACKGROUNDs:
+            print(Fore.LIGHTRED_EX + "- " + t)
+        print('\n')
+        BACKGROUND=iinput(Fore.LIGHTRED_EX + ITALIC_VAR + "Enter your selected Background here: " + Fore.RESET + RESET_VAR).title()
+
+        if BACKGROUND in BACKGROUNDS:
+            if BACKGROUND == "Default":
+                print("Background set to Default.")
+                sel_bg = ""
+            else:
+                sel_bg = BACKGROUND
+                tprint(f"Background set to {BACKGROUND}.")
+        else:
+            print('Background not recognized. Setting background to default.')
 
 
-    # Help menu (list all games)
+    # === GAME LIST ===
     elif game == 'h':
         clearTerminal()
         tprint('\n == Games == \n')
@@ -338,7 +378,7 @@ while True:
         continue
 
 
-    # Help menu (list all easter eggs)
+    # === EASTER EGG LIST ===
     elif game == 'eh':
         clearTerminal()
         tprint('\n == Easter Eggs == \n')
@@ -348,20 +388,7 @@ while True:
         continue
 
 
-    # Secret menu (list all secret commands)
-    elif game == 'secret':
-        clearTerminal()
-        tprint("\n🌿 SECRET MENU 🌿")
-        tprint("These are the hidden commands you have unlocked:\n")
-
-        for cmd, desc in SECRET_COMMANDS.items():
-            tprint(f"- {cmd}: {desc}")
-
-        iinput("\nPress Enter to continue...")
-        continue
-
-
-    # Total count (games + easter eggs)
+    # === COUNT GAMES & EASTER EGGS ===
     elif game == 'len':
         clearTerminal()
         tprint('\nThe number of games in this list is: ' + str(len(GAMES) + len(EASTER_EGGS)))
@@ -369,32 +396,73 @@ while True:
         continue
 
 
-    # Easter egg count only
-    elif game == 'len_easter':
+    # === COUNT EASTER EGGS ONLY ===
+    elif game == 'lene':
         clearTerminal()
         tprint('\nThe number of easter eggs in this list is: ' + str(len(EASTER_EGGS)))
         iinput('\nPress enter to continue....')
         continue
 
 
-    # Unlocks all progress
+    # === UNLOCK ALL PROGRESS ===
     elif game == 'grassgod':
         clearTerminal()
-        tprint("\n🌿 SECRET UNLOCKED 🌿")
-        tprint("You have ascended beyond mortal grass touchers.")
+        tprint("\n====== 🌿 SECRET UNLOCKED 🌿 ======")
+        tprint("\nYou have ascended beyond mortal grass touchers.")
 
-
-        # Unlock everything
         progress["games_found"] = list(GAMES.keys())
         progress["eggs_found"] = list(EASTER_EGGS.keys())
 
-
-        tprint("All games and easter eggs unlocked!")
+        tprint("\n\nAll games and easter eggs unlocked!")
         iinput("\nPress Enter to continue...")
         continue
 
 
-    # The commands powering the grass shop
+    # == UNLOCK ALL BACKGORUNDS ===
+    elif game == 'backgroundgod':
+        clearTerminal()
+        tprint("\n====== 🌿 SECRET UNLOCKED 🌿 ======")
+        tprint("\nYou have unlocked all backgrounds.")
+
+        progress["unlocked_themes"] = list(THEMES.keys())
+        THEMEs.clear()
+        THEMEs.extend(progress["unlocked_themes"])
+        themeS.clear()
+
+        tprint("\n\nAll backgrounds unlocked!")
+        iinput("\nPress Enter to continue...")
+        continue
+
+    # == UNLOCK ALL THEMES ===
+    elif game == 'themegod':
+        clearTerminal()
+        tprint("\n====== 🌿 SECRET UNLOCKED 🌿 ======")
+        tprint("\nYou have unlocked all themes.")
+
+        progress["unlocked_themes"] = list(THEMES.keys())
+        THEMEs.clear()
+        THEMEs.extend(progress["unlocked_themes"])
+        themeS.clear()
+
+        tprint("\n\nAll themes unlocked!")
+        iinput("\nPress Enter to continue...")
+        continue
+
+
+    # === GAIN GRASS COINS ===
+    elif game == 'coingod':
+        clearTerminal()
+        tprint("\n====== 🌿 SECRET UNLOCKED 🌿 ======")
+        tprint("\nYou have discovered the secret to infinite Grass Coins.")
+
+        progress["coins"] += 100
+
+        tprint("\n\n+100 Grass Coins added!")
+        iinput("\nPress Enter to continue...")
+        continue
+
+
+    # === GRASS SHOP ===
     elif game == 'shop':
         clearTerminal()
         tprint("\n=== 🌿 GRASS SHOP 🌿 ===")
@@ -402,7 +470,8 @@ while True:
         tprint("Available items:")
         tprint("1. Hint (5 coins)")
         tprint("2. Theme (10 coins)")
-        tprint("3. Exit shop")
+        tprint("3. Background (10 coins)")
+        tprint("4. Exit shop")
 
         choice = iinput("\nChoose an option: ").strip()
 
@@ -413,6 +482,7 @@ while True:
                 tprint(f"\n🌱 Your hint: Try searching for '{hint}'.")
             else:
                 tprint("\nNot enough coins!")
+
         elif choice == "2":
             if progress["coins"] >= 10: 
                 clearTerminal()
@@ -428,11 +498,33 @@ while True:
                     tprint(f"\nTheme '{theme_choice}' unlocked!")
                 else:
                     tprint("\nInvalid theme choice or already unlocked.")
+                    progress["coins"] += 10  # Refund coins if invalid choice
             else:
                 tprint("\nNot enough coins!")
+
         elif choice == "3":
+            if progress["coins"] >= 10: 
+                clearTerminal()
+                tprint("\nAvailable backgrounds:")
+                for t in backgroundS:
+                    tprint("- " + t)
+                background_choice = iinput("\nEnter the background you want to unlock: ").title()
+                if background_choice in BACKGROUNDS and background_choice not in progress["unlocked_backgrounds"]:
+                    progress["coins"] -= 10
+                    progress["unlocked_backgrounds"].append(background_choice)
+                    BACKGROUNDs.append(background_choice)
+                    backgroundS.remove(background_choice)
+                    tprint(f"\nBackground '{background_choice}' unlocked!")
+                else:
+                    tprint("\nInvalid background choice or already unlocked.")
+                    progress["coins"] += 10  # Refund coins if invalid choice
+            else:
+                tprint("\nNot enough coins!")
+
+        elif choice == "4":
             clearTerminal()
             tprint("\nLeaving the shop...")
+
         else:
             tprint("\nInvalid choice. Leaving the shop...")
 
@@ -440,7 +532,7 @@ while True:
         continue
 
 
-    # Random hint (only from GAMES, not easter eggs, and doesn't count towards your progress')
+    # === RANDOM HINT ===
     elif game == 'seed':
         clearTerminal()
         all_games = list(GAMES.keys())
@@ -450,7 +542,7 @@ while True:
         continue
 
 
-    # Game found
+    # === GAME FROUND ===
     elif game in GAMES:
         clearTerminal()
         tprint(f'\n == {game.upper()} ==\n')
@@ -467,7 +559,7 @@ while True:
         continue
 
 
-    # Save progress option
+    # === SAVE PROGRESS ===
     elif game == 's':
         clearTerminal()
         tprint("\nWhich save slot do you want to save to?")
@@ -486,7 +578,7 @@ while True:
         continue
 
 
-    # Delete save slot
+    # === DELETE SAVE SLOT ===
     elif game == 'delete':
         clearTerminal()
         tprint("\n=== DELETE SAVE SLOT ===")
@@ -507,7 +599,7 @@ while True:
         continue
 
 
-    # View progress
+    # === VIEW PROGRESS ===
     elif game == 'p':
         clearTerminal()
         tprint("\n=== YOUR PROGRESS ===")
@@ -530,7 +622,7 @@ while True:
         continue
 
 
-    # Easter egg found
+    # === EASTER EGG FOUND ===
     elif game in EASTER_EGGS:
         clearTerminal()
         tprint('\nCONGRATULATIONS!!! You have successfully found an easter egg!!!')
@@ -547,7 +639,7 @@ while True:
         iinput('\nPress enter to continue....')
         continue
 
-    # Not recognized
+    # === INVALID INPUT ===
     else:
         tprint('\nSorry, game not recognized. Try Again!!!')
         time.sleep(1)
